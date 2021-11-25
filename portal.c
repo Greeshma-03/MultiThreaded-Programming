@@ -85,9 +85,9 @@ int Get_availabe_TA(int id)
     if (absent == num)
     {
         if (TA_labs[id].absent != 1)
-            pthread_mutex_lock(&print_mutex);
-        printf(MAGENTA "Lab %s no longer has students available for TA ship says %ld\n" NORMAL, TA_labs[id].name, pthread_self());
-        pthread_mutex_unlock(&print_mutex);
+        {
+            printf(MAGENTA "Lab %s no longer has students available for TA ship says %ld\n" NORMAL, TA_labs[id].name, pthread_self());
+        }
 
         TA_labs[id].absent == 1; //this TA_lab has no more TA's ready for tut even in future
         return -2;               //indicates absence of TAs in lab!!!
@@ -107,6 +107,12 @@ void *course(void *inp)
     int num_labs = ((struct course *)inp)->num_labs;
     int ID = ((struct course *)inp)->ID;
     int *lab_ID = ((struct course *)inp)->lab_IDs; //list of lab_ids for that course
+    
+    // printf("\n\npulse niku untadi ra rey!!!!!!!\n");
+    // for(int i=0;i<num_labs;i++){
+    //     printf("%s\n",TA_labs[lab_ID[i]].name);
+    // }
+    // return NULL;
 
     while (1)
     {
@@ -127,14 +133,10 @@ void *course(void *inp)
             {
                 pthread_mutex_lock(&Ta_mutex);
                 int nth_ta_ship = TA_labs[lab_ID[i]].Max_Taship - TA_labs[lab_ID[i]].TA[x];
-                pthread_mutex_unlock(&Ta_mutex);
                 //get the available TA from given lab_id
-                pthread_mutex_lock(&print_mutex);
                 printf(BLUE "TA %d from lab %s has been allocated to course %s for his %d TA ship\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID], nth_ta_ship);
-                pthread_mutex_unlock(&print_mutex);
 
                 /*******Conducting tutorial*******/
-                pthread_mutex_lock(&Ta_mutex);
                 int store = TA_labs[lab_ID[i]].TA[x];
                 TA_labs[lab_ID[i]].TA[x] = -1;
                 pthread_mutex_unlock(&Ta_mutex);
@@ -146,17 +148,15 @@ void *course(void *inp)
                 pthread_mutex_lock(&seat_mutex);
                 alloted[ID] = p;
                 pthread_mutex_unlock(&seat_mutex);
-
+                
                 pthread_cond_signal(&seatallocated);
                 sleep(5); //don't sleep in tut :P
-
+                alloted[ID]=0;
                 pthread_mutex_lock(&Ta_mutex);
                 TA_labs[lab_ID[i]].TA[x] = store;
                 pthread_mutex_unlock(&Ta_mutex);
                 /*********************************/
-                pthread_mutex_lock(&print_mutex);
-                printf(BLUE "TA %d from lab %s has completed the tutorial and left the course\n%s" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID]);
-                pthread_mutex_unlock(&print_mutex);
+                printf(BLUE "TA %d from lab %s has completed the tutorial and left the course %s\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID]);
             }
         }
 
@@ -168,9 +168,7 @@ void *course(void *inp)
     course_interest[ID] = -1; //course no longer exists
     pthread_mutex_unlock(&course_mutex);
 
-    pthread_mutex_lock(&print_mutex);
-    printf(YELLOW "Course %s does not have any TA mentors eligible and is removed from course offerings\n" NORMAL, course_name[ID]);
-    pthread_mutex_unlock(&print_mutex);
+    printf(RED "Course %s does not have any TA mentors eligible and is removed from course offerings\n" NORMAL, course_name[ID]);
 
     return NULL;
 }
@@ -237,31 +235,23 @@ void *student(void *inp)
 
             if (p_student > p)
             { //finalized a course
-                pthread_mutex_lock(&print_mutex);
                 printf(RED "Student %d has selected course %s permanently\n" NORMAL, ID, course_name[pref[i]]);
-                pthread_mutex_unlock(&print_mutex);
                 return NULL;
             }
             else
             { //moving to next preference
-                pthread_mutex_lock(&print_mutex);
                 printf(CYAN "Student %d has withdrawn from course %s\n" NORMAL, ID, course_name[pref[i]]);
-                pthread_mutex_unlock(&print_mutex);
             }
         }
 
         if (i != 2)
         {
-            pthread_mutex_lock(&print_mutex);
             printf(CYAN "Student %d has changed current preference from %s (priority %d) to %s (priority %d)\n" NORMAL, ID, course_name[pref[i]], i, course_name[pref[i + 1]], i + 1);
-            pthread_mutex_unlock(&print_mutex);
         }
         //deciding to select the course
     }
 
-    pthread_mutex_lock(&print_mutex);
     printf(RED "Student %d couldn’t get any of his preferred courses\n" NORMAL, ID);
-    pthread_mutex_unlock(&print_mutex);
     return NULL;
 }
 
@@ -323,7 +313,7 @@ int main()
 
     reading = 0;
 
-    //the program terminates after terminating of all student threads
+    // the program terminates after terminating of all student threads
     for (int i = 0; i < num_students; i++)
     {
         pthread_join(sthread[i], NULL);
