@@ -1,0 +1,13 @@
+The gist of q1 is :
+Courses:
+1. Get a TA from select list of labs
+2. Allocate a random number of seats b/w 1 and max_seats
+3. Take a tutorial
+4. Repeat until TAs are unavailable
+Students
+1. Apply for course
+2. Get a seat
+3. After tutorial decide to either repeat same steps witha diff course or exit simulation
+
+TAs/Labs
+Basically a resource, A TA can be only used a fixed number of times as specified by the lab it belongs to 
