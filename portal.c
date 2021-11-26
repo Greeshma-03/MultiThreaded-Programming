@@ -105,6 +105,7 @@ void *course(void *inp)
 
     while (non_existence != num_labs)
     {
+        non_existence = 0;
         for (int i = 0; i < num_labs; i++)
         {
             pthread_mutex_lock(&lababsent_mutex);
@@ -159,6 +160,8 @@ void *course(void *inp)
                     printf(BLUE "TA %d from lab %s has completed the tutorial and left the course %s\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID]);
                 }
             }
+            else
+                non_existence++;
         }
     }
 
@@ -216,7 +219,6 @@ void *student(void *inp)
             }
             pthread_mutex_unlock(&course_seat_mutex[pref[i]]);
         }
-        
 
         if (with_draw == 0)
         {
