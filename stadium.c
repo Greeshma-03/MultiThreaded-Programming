@@ -208,18 +208,17 @@ void *home_spec(void *inp)
     pthread_create(&p3, NULL, sleeping_thread, NULL);
 
     pthread_mutex_lock(&(((struct spectator *)inp)->spec_mutex));
-
     while (time_up[ID] != 1)
     {
         if (enrage <= away_team)
         {
             printf(RED "%s is leaving due to the bad defensive performance of his team %d\n" NORMAL, name, enrage);
-            // pthread_mutex_unlock(&(((struct spectator *)inp)->spec_mutex));
+            pthread_mutex_unlock(&(((struct spectator *)inp)->spec_mutex));
             return NULL;
         }
         else
         {
-            pthread_cond_wait(&signal, &(((struct spectator *)inp)->spec_mutex));
+            pthread_cond_wait(&signal, &(((struct spectator *)inp)->spec_mutex)); //signals are sent by goals and time-up
         }
     }
     printf(CYAN "%s watched the match for %d seconds and is leaving\n" NORMAL, name, spec_time);
@@ -251,9 +250,7 @@ void *neutral_spec(void *inp)
     pthread_create(&p2, NULL, neutralseat_wait, (void *)(thread_input));
     pthread_create(&p3, NULL, awayseat_wait, (void *)(thread_input));
 
-    pthread_join(p1, NULL);
-    pthread_join(p2, NULL);
-    pthread_join(p3, NULL);
+    pthread_cond_wait(&seat_came[ID], &seat_mutex[ID]);
 
     if (flags[ID] == 0)
     {
@@ -300,7 +297,7 @@ void *away_spec(void *inp)
     thread_input->patience = patience;
 
     pthread_create(&p1, NULL, awayseat_wait, (void *)(thread_input));
-    pthread_join(p1, NULL);
+    pthread_cond_wait(&seat_came[ID], &seat_mutex[ID]);//signal is sent till someone got us a seat or time expired 
 
     if (flags[ID] == 0)
     {
