@@ -36,19 +36,20 @@ typedef struct student
 
 typedef struct lab
 {
+    pthread_mutex_t lab_mutex;
     char name[32];
     int num_Ta;
     int TA[32]; //stores the number of times a xth TA can do his TA_ship
     int Max_Taship;
     int absent;
+    pthread_mutex_t ta_mutex[32]; //mutexes for each of the TA
+
 } Lab;
 
 /*******************synchornization variables************************/
-pthread_mutex_t Ta_mutex = PTHREAD_MUTEX_INITIALIZER;     //get a TA for the course
 pthread_mutex_t seat_mutex = PTHREAD_MUTEX_INITIALIZER;   //allocating a seat to student
 pthread_mutex_t course_mutex = PTHREAD_MUTEX_INITIALIZER; //course_interest changing mutex
 pthread_cond_t seatallocated = PTHREAD_COND_INITIALIZER;  //seats are allocated
-pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;  //seats are allocated
 /********************************************************************/
 
 /***************************Global variables*************************/
@@ -61,7 +62,10 @@ int reading = 1;           //input reading
 
 int Get_availabe_TA(int id)
 {
+    pthread_mutex_lock(&TA_labs[id].lab_mutex);
     int use = TA_labs[id].absent;
+    pthread_mutex_unlock(&TA_labs[id].lab_mutex);
+
     if (use == 1)
     {
         return -2;
@@ -71,6 +75,7 @@ int Get_availabe_TA(int id)
     int absent = 0;
     for (int i = 0; i < num; i++)
     {
+        pthread_mutex_lock(&TA_labs[id].ta_mutex[i]);
         if ((TA_labs[id].TA[i]) == 0)
             absent++;
 
@@ -78,22 +83,25 @@ int Get_availabe_TA(int id)
         {
             //when ta is already taking tut value will be -1 though he has taships in future
             TA_labs[id].TA[i]--;
+            pthread_mutex_unlock(&TA_labs[id].ta_mutex[i]);
             return i; //ith TA is available
         }
+        pthread_mutex_unlock(&TA_labs[id].ta_mutex[i]);
     }
 
     if (absent == num)
     {
+        pthread_mutex_lock(&TA_labs[id].lab_mutex);
         if (TA_labs[id].absent != 1)
         {
             printf(MAGENTA "Lab %s no longer has students available for TA ship says %ld\n" NORMAL, TA_labs[id].name, pthread_self());
         }
 
         TA_labs[id].absent == 1; //this TA_lab has no more TA's ready for tut even in future
+        pthread_mutex_unlock(&TA_labs[id].lab_mutex);
         return -2;               //indicates absence of TAs in lab!!!
     }
-    else
-        return -1; //No cuurently available TAs found
+    return -1; //No cuurently available TAs found
 }
 
 void *course(void *inp)
@@ -107,23 +115,13 @@ void *course(void *inp)
     int num_labs = ((struct course *)inp)->num_labs;
     int ID = ((struct course *)inp)->ID;
     int *lab_ID = ((struct course *)inp)->lab_IDs; //list of lab_ids for that course
-    
-    // printf("\n\npulse niku untadi ra rey!!!!!!!\n");
-    // for(int i=0;i<num_labs;i++){
-    //     printf("%s\n",TA_labs[lab_ID[i]].name);
-    // }
-    // return NULL;
 
     while (1)
     {
         int non_existence = 0;
         for (int i = 0; i < num_labs; i++)
         {
-
-            pthread_mutex_lock(&Ta_mutex);
-            int x = Get_availabe_TA(lab_ID[i]);
-            pthread_mutex_unlock(&Ta_mutex);
-
+            int x = Get_availabe_TA(lab_ID[i]);//x is TA_ID
             if (x == -2)
             {
                 non_existence++;
@@ -131,7 +129,7 @@ void *course(void *inp)
             }
             if (x >= 0)
             {
-                pthread_mutex_lock(&Ta_mutex);
+                pthread_mutex_lock(&TA_labs[i].ta_mutex[x]);
                 int nth_ta_ship = TA_labs[lab_ID[i]].Max_Taship - TA_labs[lab_ID[i]].TA[x];
                 //get the available TA from given lab_id
                 printf(BLUE "TA %d from lab %s has been allocated to course %s for his %d TA ship\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID], nth_ta_ship);
@@ -139,7 +137,6 @@ void *course(void *inp)
                 /*******Conducting tutorial*******/
                 int store = TA_labs[lab_ID[i]].TA[x];
                 TA_labs[lab_ID[i]].TA[x] = -1;
-                pthread_mutex_unlock(&Ta_mutex);
 
                 int p = rand();
                 p = p % max_slots;
@@ -148,15 +145,14 @@ void *course(void *inp)
                 pthread_mutex_lock(&seat_mutex);
                 alloted[ID] = p;
                 pthread_mutex_unlock(&seat_mutex);
-                
+
                 pthread_cond_signal(&seatallocated);
                 sleep(5); //don't sleep in tut :P
-                alloted[ID]=0;
-                pthread_mutex_lock(&Ta_mutex);
+                // alloted[ID]=0;
                 TA_labs[lab_ID[i]].TA[x] = store;
-                pthread_mutex_unlock(&Ta_mutex);
                 /*********************************/
                 printf(BLUE "TA %d from lab %s has completed the tutorial and left the course %s\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID]);
+                pthread_mutex_unlock(&TA_labs[i].ta_mutex[x]);
             }
         }
 
@@ -192,10 +188,8 @@ void *student(void *inp)
 
     for (int i = 0; i < 3; i++)
     {
-
         //waiting for tutorial slot
         int with_draw = 0;
-
         while (1)
         {
             //if course is withdrawn from portal then shifting to next preference
