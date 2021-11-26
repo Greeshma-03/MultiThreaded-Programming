@@ -305,9 +305,7 @@ void *worker_job(void *arg)
 {
     pthread_mutex_lock(&que_pop_mutex); 
     while (1)
-    {
-        //    cout<<"Hi,reproting from: "<<pthread_self()<<endl;
-
+    {        
         //each thread just lock the que_mutex
         int client_socket_fd = -1;
         //get the available job from que of jobs
