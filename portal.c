@@ -62,7 +62,7 @@ int reading = 1;           //input reading
 
 int Get_availabe_TA(int id)
 {
-    int num = TA_labs[id].num_Ta;
+    int num = TA_labs[id].num_Ta;       
     int absent = 0;
     for (int i = 0; i < num; i++)
     {
@@ -95,15 +95,14 @@ void *course(void *inp)
 
     float interst = ((struct course *)inp)->interest;
     int max_slots = ((struct course *)inp)->max_slots;
-    int num_labs = ((struct course *)inp)->num_labs;
-    int ID = ((struct course *)inp)->ID;
-    int *lab_ID = ((struct course *)inp)->lab_IDs; //list of lab_ids for that course
+    int num_labs = ((struct course *)inp)->num_labs;        // total no.of labs allocated
+    int ID = ((struct course *)inp)->ID;                    // course id 
+    int *lab_ID = ((struct course *)inp)->lab_IDs;          //list of lab_ids for that course
 
-    int non_existence = 0;
+    int non_existence = 0;              // is lab alive 
 
     while (non_existence != num_labs)
     {
-        non_existence = 0;
         for (int i = 0; i < num_labs; i++)
         {
             if (absent_labs[lab_ID[i]] != 1)
@@ -141,7 +140,7 @@ void *course(void *inp)
                     pthread_mutex_unlock(&seat_mutex);
 
                     pthread_cond_signal(&seatallocated);
-                    sleep(5); //don't sleep in tut :P
+                    sleep(2); //don't sleep in tut :P
 
                     pthread_mutex_lock(&seat_mutex);
                     alloted[ID] = 0;
@@ -259,10 +258,9 @@ int main()
     for (int i = 0; i < num_courses; i++)
     {
         int lab;
-        pthread_t curr_tid;
         Course *thread_input = (Course *)(malloc(sizeof(Course)));
         char name[32];
-        scanf("%s%f%d%d", name, &thread_input->interest, &thread_input->max_slots, &lab);
+        scanf("%s %f %d %d", name, &thread_input->interest, &thread_input->max_slots, &lab);
         thread_input->num_labs = lab;
         thread_input->ID = i;
         alloted[i] = 0;
@@ -271,20 +269,20 @@ int main()
         for (int j = 0; j < lab; j++)
             scanf("%d", &thread_input->lab_IDs[j]);
 
-        pthread_create(&curr_tid, NULL, course, (void *)(thread_input));
-        cthread[i] = curr_tid;
+        pthread_create(&cthread[i], NULL, course, (void *)(thread_input));
+        
     }
 
     //creating student threads and intialising all variables
     pthread_t sthread[num_students];
     for (int i = 0; i < num_students; i++)
     {
-        pthread_t curr_tid;
+        
         Student *thread_input = (Student *)(malloc(sizeof(Student)));
         scanf("%f%d%d%d%d", &thread_input->calibre, &thread_input->pref1, &thread_input->pref2, &thread_input->pref3, &thread_input->time);
         thread_input->ID = i;
-        pthread_create(&curr_tid, NULL, student, (void *)(thread_input));
-        sthread[i] = curr_tid;
+        pthread_create(&sthread[i], NULL, student, (void *)(thread_input));
+        
     }
 
     //Taking input for the labs
