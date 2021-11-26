@@ -83,9 +83,17 @@ void *homeseat_wait(void *inp) //zone-1
         pthread_cond_signal(&seat_came[ID]);
         return NULL;
     }
+
     pthread_mutex_lock(&seat_mutex[ID]);
     if (flags[ID] == 0)
+    {
         flags[ID] = 1;
+        pthread_cond_signal(&seat_came[ID]);
+    }
+    else
+    {
+        sem_post(&home_sem);
+    }
     pthread_mutex_unlock(&seat_mutex[ID]);
 
     return NULL;
@@ -109,9 +117,15 @@ void *neutralseat_wait(void *inp) //zone-2
 
     pthread_mutex_lock(&seat_mutex[ID]);
     if (flags[ID] == 0)
+    {
         flags[ID] = 2;
+        pthread_cond_signal(&seat_came[ID]);
+    }
+    else
+    {
+        sem_post(&neutral_sem);
+    }
     pthread_mutex_unlock(&seat_mutex[ID]);
-    pthread_cond_signal(&seat_came[ID]);
 
     return NULL;
 }
@@ -133,9 +147,15 @@ void *awayseat_wait(void *inp) //zone-3
     }
     pthread_mutex_lock(&seat_mutex[ID]);
     if (flags[ID] == 0)
+    {
         flags[ID] = 3;
+        pthread_cond_signal(&seat_came[ID]);
+    }
+    else
+    {
+        sem_post(&away_sem);
+    }
     pthread_mutex_unlock(&seat_mutex[ID]);
-    pthread_cond_signal(&seat_came[ID]);
     return NULL;
 }
 
@@ -191,9 +211,9 @@ void *home_spec(void *inp)
 
     while (time_up[ID] != 1)
     {
-        if (enrage >= away_team)
+        if (enrage <= away_team)
         {
-            printf(YELLOW "%s is leaving due to the bad defensive performance of his team\n" NORMAL, name);
+            printf(RED "%s is leaving due to the bad defensive performance of his team %d\n" NORMAL, name, enrage);
             // pthread_mutex_unlock(&(((struct spectator *)inp)->spec_mutex));
             return NULL;
         }
@@ -221,7 +241,7 @@ void *neutral_spec(void *inp)
     sleep(time);
     printf(RED "%s has reached the stadium\n" NORMAL, name);
 
-    pthread_t p1, p2;
+    pthread_t p1, p2, p3;
 
     td *thread_input = (td *)(malloc(sizeof(td)));
     thread_input->ID = ID;
@@ -229,11 +249,11 @@ void *neutral_spec(void *inp)
 
     pthread_create(&p1, NULL, homeseat_wait, (void *)(thread_input));
     pthread_create(&p2, NULL, neutralseat_wait, (void *)(thread_input));
-    pthread_create(&p2, NULL, awayseat_wait, (void *)(thread_input));
+    pthread_create(&p3, NULL, awayseat_wait, (void *)(thread_input));
 
     pthread_join(p1, NULL);
     pthread_join(p2, NULL);
-    pthread_join(p2, NULL);
+    pthread_join(p3, NULL);
 
     if (flags[ID] == 0)
     {
@@ -298,9 +318,9 @@ void *away_spec(void *inp)
     pthread_mutex_lock(&(((struct spectator *)inp)->spec_mutex));
     while (time_up[ID] != 1)
     {
-        if (enrage >= away_team)
+        if (enrage <= home_team)
         {
-            printf(YELLOW "%s is leaving due to the bad defensive performance of his team\n" NORMAL, name);
+            printf(RED "%s is leaving due to the bad defensive performance of his team %d\n" NORMAL, name, enrage);
             pthread_mutex_unlock(&(((struct spectator *)inp)->spec_mutex));
             return NULL;
         }
@@ -367,7 +387,7 @@ int main()
     sem_init(&neutral_sem, 0, cap_n);
     sem_init(&away_sem, 0, cap_a);
 
-    int groups,Total_peep=0;
+    int groups, Total_peep = 0;
     pthread_t sthread[1024];
     scanf("%d %d", &spec_time, &groups);
 
@@ -413,14 +433,14 @@ int main()
         scanf("%c%d%f", &thread_input->team, &thread_input->goal_time, &thread_input->prob);
         pthread_create(&sgoal[i], NULL, goal_thread, (void *)(thread_input));
     }
-    getchar();
+
     reading = 1;
 
-    for(int i=0;i<num_goals;i++)
-    pthread_join(sgoal[i],NULL);
+    for (int i = 0; i < num_goals; i++)
+        pthread_join(sgoal[i], NULL);
 
-    for(int i=0;i<Total_peep;i++)
-    pthread_join(sthread[i],NULL);
+    for (int i = 0; i < Total_peep; i++)
+        pthread_join(sthread[i], NULL);
 
     return 0;
 }
