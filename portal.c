@@ -41,7 +41,6 @@ typedef struct lab
     int num_Ta;
     int TA[32]; //stores the number of times a xth TA can do his TA_ship
     int Max_Taship;
-    int absent;
     pthread_mutex_t ta_mutex[32]; //mutexes for each of the TA
 
 } Lab;
@@ -53,7 +52,8 @@ pthread_cond_t seatallocated = PTHREAD_COND_INITIALIZER;  //seats are allocated
 /********************************************************************/
 
 /***************************Global variables*************************/
-Lab TA_labs[64];           //Lab in the college that consists of TA's
+Lab TA_labs[64]; //Lab in the college that consists of TA's
+int absent_labs[64];
 int alloted[64];           //alloted slots for each of the course
 float course_interest[64]; //interest in each course
 char course_name[64][32];  //name of the courses are stored
@@ -62,15 +62,6 @@ int reading = 1;           //input reading
 
 int Get_availabe_TA(int id)
 {
-    pthread_mutex_lock(&TA_labs[id].lab_mutex);
-    int use = TA_labs[id].absent;
-    pthread_mutex_unlock(&TA_labs[id].lab_mutex);
-
-    if (use == 1)
-    {
-        return -2;
-    }
-
     int num = TA_labs[id].num_Ta;
     int absent = 0;
     for (int i = 0; i < num; i++)
@@ -91,15 +82,7 @@ int Get_availabe_TA(int id)
 
     if (absent == num)
     {
-        pthread_mutex_lock(&TA_labs[id].lab_mutex);
-        if (TA_labs[id].absent != 1)
-        {
-            printf(MAGENTA "Lab %s no longer has students available for TA ship says %ld\n" NORMAL, TA_labs[id].name, pthread_self());
-        }
-
-        TA_labs[id].absent == 1; //this TA_lab has no more TA's ready for tut even in future
-        pthread_mutex_unlock(&TA_labs[id].lab_mutex);
-        return -2;               //indicates absence of TAs in lab!!!
+        return -2; //indicates absence of TAs in lab!!!
     }
     return -1; //No cuurently available TAs found
 }
@@ -116,48 +99,62 @@ void *course(void *inp)
     int ID = ((struct course *)inp)->ID;
     int *lab_ID = ((struct course *)inp)->lab_IDs; //list of lab_ids for that course
 
-    while (1)
+    int non_existence = 0;
+
+    while (non_existence != num_labs)
     {
-        int non_existence = 0;
+        non_existence = 0;
         for (int i = 0; i < num_labs; i++)
         {
-            int x = Get_availabe_TA(lab_ID[i]);//x is TA_ID
-            if (x == -2)
+            if (absent_labs[lab_ID[i]] != 1)
             {
-                non_existence++;
-                continue;
-            }
-            if (x >= 0)
-            {
-                pthread_mutex_lock(&TA_labs[i].ta_mutex[x]);
-                int nth_ta_ship = TA_labs[lab_ID[i]].Max_Taship - TA_labs[lab_ID[i]].TA[x];
-                //get the available TA from given lab_id
-                printf(BLUE "TA %d from lab %s has been allocated to course %s for his %d TA ship\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID], nth_ta_ship);
+                int x = Get_availabe_TA(lab_ID[i]); //x is TA_ID
 
-                /*******Conducting tutorial*******/
-                int store = TA_labs[lab_ID[i]].TA[x];
-                TA_labs[lab_ID[i]].TA[x] = -1;
+                if (x == -2)
+                {
+                    absent_labs[lab_ID[i]] = 1;
+                    printf(CYAN"Lab %s no longer has students available for TA ship\n"NORMAL,TA_labs[lab_ID[i]].name);
+                    non_existence++;
+                    continue;
+                }
 
-                int p = rand();
-                p = p % max_slots;
-                p += 1; //the randomly selected seats range from 0+1 to w-1+1 inclusive
+                if (x >= 0)
+                {
+                    pthread_mutex_lock(&TA_labs[lab_ID[i]].ta_mutex[x]);
+                    int nth_ta_ship = TA_labs[lab_ID[i]].Max_Taship - TA_labs[lab_ID[i]].TA[x];
+                    //get the available TA from given lab_id
+                    printf(BLUE "TA %d from lab %s has been allocated to course %s for his %d TA ship\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID], nth_ta_ship);
 
-                pthread_mutex_lock(&seat_mutex);
-                alloted[ID] = p;
-                pthread_mutex_unlock(&seat_mutex);
+                    /*******Conducting tutorial*******/
+                    int store = TA_labs[lab_ID[i]].TA[x];
+                    TA_labs[lab_ID[i]].TA[x] = -1;
 
-                pthread_cond_signal(&seatallocated);
-                sleep(5); //don't sleep in tut :P
-                // alloted[ID]=0;
-                TA_labs[lab_ID[i]].TA[x] = store;
-                /*********************************/
-                printf(BLUE "TA %d from lab %s has completed the tutorial and left the course %s\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID]);
-                pthread_mutex_unlock(&TA_labs[i].ta_mutex[x]);
+                    int p = rand();
+                    p = p % max_slots;
+                    p += 1; //the randomly selected seats range from 0+1 to w-1+1 inclusive
+                    pthread_mutex_unlock(&TA_labs[lab_ID[i]].ta_mutex[x]);
+
+                    printf(YELLOW "Course %s has been allocated %d seats\n" NORMAL, course_name[ID], p);
+
+                    pthread_mutex_lock(&seat_mutex);
+                    alloted[ID] = p;
+                    pthread_mutex_unlock(&seat_mutex);
+
+                    pthread_cond_signal(&seatallocated);
+                    sleep(5); //don't sleep in tut :P
+
+                    pthread_mutex_lock(&seat_mutex);
+                    alloted[ID] = 0;
+                    pthread_mutex_unlock(&seat_mutex);
+
+                    pthread_mutex_lock(&TA_labs[lab_ID[i]].ta_mutex[x]);
+                    TA_labs[lab_ID[i]].TA[x] = store;
+                    /*********************************/
+                    printf(BLUE "TA %d from lab %s has completed the tutorial and left the course %s\n" NORMAL, x, TA_labs[lab_ID[i]].name, course_name[ID]);
+                    pthread_mutex_unlock(&TA_labs[lab_ID[i]].ta_mutex[x]);
+                }
             }
         }
-
-        if (non_existence == num_labs) //all the TA's of labs completed their TA-ship it's time to leave!!
-            break;
     }
 
     pthread_mutex_lock(&course_mutex);
@@ -271,7 +268,6 @@ int main()
         alloted[i] = 0;
         course_interest[i] = thread_input->interest;
         strcpy(course_name[i], name);
-
         for (int j = 0; j < lab; j++)
             scanf("%d", &thread_input->lab_IDs[j]);
 
@@ -298,11 +294,9 @@ int main()
         for (int j = 0; j < TA_labs[i].num_Ta; j++)
         {
             TA_labs[i].TA[j] = TA_labs[i].Max_Taship;
+            pthread_mutex_init(&(TA_labs[i].ta_mutex[j]), NULL);
         }
-        if ((TA_labs[i].num_Ta) != 0)
-            TA_labs[i].absent = 0; //this lab has atleast one TA present
-        else
-            TA_labs[i].absent = 1;
+        absent_labs[i] = 0; //intially all are present
     }
 
     reading = 0;
