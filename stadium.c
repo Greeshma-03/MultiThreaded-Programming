@@ -75,6 +75,7 @@ void *sleeping_thread(void *inp)
     sleep(spec_time);
     //changing the flag
     time_up[ID] = 1;
+    pthread_cond_signal(&signal);
     return NULL;
 }
 /**********************************************************/
@@ -256,7 +257,7 @@ void *neutral_spec(void *inp)
     int ID = ((struct spectator *)inp)->ID;
 
     sleep(time);
-    printf(RED "%s has reached the stadium\n" NORMAL, name);
+    printf(BLUE "%s has reached the stadium\n" NORMAL, name);
 
     pthread_t p1, p2, p3;
 
