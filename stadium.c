@@ -55,6 +55,19 @@ typedef struct thread_details
     int patience;
 } td;
 
+/*********************************************************/
+void add_seat(int flag)
+{
+    if (flag == 1)
+        sem_post(&home_sem);
+    else if (flag == 2)
+        sem_post(&neutral_sem);
+    else if (flag == 3)
+        sem_post(&away_sem);
+    else
+        printf(RED "Bruhhhhhh!!!\n" NORMAL);
+}
+
 /*******************SLEEPING THREAD************************/
 void *sleeping_thread(void *inp)
 {
@@ -84,17 +97,18 @@ void *homeseat_wait(void *inp) //zone-1
         return NULL;
     }
 
-    pthread_mutex_lock(&seat_mutex[ID]);
     if (flags[ID] == 0)
     {
+        pthread_mutex_lock(&seat_mutex[ID]);
+
         flags[ID] = 1;
         pthread_cond_signal(&seat_came[ID]);
+        pthread_mutex_unlock(&seat_mutex[ID]);
     }
     else
     {
         sem_post(&home_sem);
     }
-    pthread_mutex_unlock(&seat_mutex[ID]);
 
     return NULL;
 }
@@ -115,17 +129,18 @@ void *neutralseat_wait(void *inp) //zone-2
         return NULL;
     }
 
-    pthread_mutex_lock(&seat_mutex[ID]);
     if (flags[ID] == 0)
     {
+        pthread_mutex_lock(&seat_mutex[ID]);
+
         flags[ID] = 2;
         pthread_cond_signal(&seat_came[ID]);
+        pthread_mutex_unlock(&seat_mutex[ID]);
     }
     else
     {
         sem_post(&neutral_sem);
     }
-    pthread_mutex_unlock(&seat_mutex[ID]);
 
     return NULL;
 }
@@ -145,17 +160,18 @@ void *awayseat_wait(void *inp) //zone-3
         pthread_cond_signal(&seat_came[ID]);
         return NULL;
     }
-    pthread_mutex_lock(&seat_mutex[ID]);
     if (flags[ID] == 0)
     {
+        pthread_mutex_lock(&seat_mutex[ID]);
         flags[ID] = 3;
         pthread_cond_signal(&seat_came[ID]);
+        pthread_mutex_unlock(&seat_mutex[ID]);
     }
     else
     {
+
         sem_post(&away_sem);
     }
-    pthread_mutex_unlock(&seat_mutex[ID]);
     return NULL;
 }
 
@@ -197,23 +213,25 @@ void *home_spec(void *inp)
 
     else if (flags[ID] == 1)
     {
-        printf(GREEN "Person %s has got a seat in zone H\n" NORMAL, name);
+        printf(GREEN "%s has got a seat in zone H\n" NORMAL, name);
     }
     else
     {
-        printf(GREEN "Person %s has got a seat in zone N\n" NORMAL, name);
+        printf(GREEN "%s has got a seat in zone N\n" NORMAL, name);
     }
 
     pthread_t p3;
-    pthread_create(&p3, NULL, sleeping_thread, NULL);
+
+    pthread_create(&p3, NULL, sleeping_thread, (void *)(thread_input));
 
     pthread_mutex_lock(&(((struct spectator *)inp)->spec_mutex));
     while (time_up[ID] != 1)
     {
         if (enrage <= away_team)
         {
-            printf(RED "%s is leaving due to the bad defensive performance of his team %d\n" NORMAL, name, enrage);
+            printf(RED "%s is leaving due to the bad defensive performance of his team\n" NORMAL, name);
             pthread_mutex_unlock(&(((struct spectator *)inp)->spec_mutex));
+            add_seat(flags[ID]);
             return NULL;
         }
         else
@@ -223,7 +241,7 @@ void *home_spec(void *inp)
     }
     printf(CYAN "%s watched the match for %d seconds and is leaving\n" NORMAL, name, spec_time);
     pthread_join(p3, NULL);
-
+    add_seat(flags[ID]);
     return NULL;
 }
 
@@ -259,20 +277,21 @@ void *neutral_spec(void *inp)
     }
     else if (flags[ID] == 1)
     {
-        printf(GREEN "Person %s has got a seat in zone H\n" NORMAL, name);
+        printf(GREEN "%s has got a seat in zone H\n" NORMAL, name);
     }
     else if (flags[ID] == 2)
     {
-        printf(GREEN "Person %s has got a seat in zone N\n" NORMAL, name);
+        printf(GREEN "%s has got a seat in zone N\n" NORMAL, name);
     }
     else
     {
-        printf(GREEN "Person %s has got a seat in zone A\n" NORMAL, name);
+        printf(GREEN "%s has got a seat in zone A\n" NORMAL, name);
     }
 
     //neutral spec watches the entire match for spec time
     sleep(spec_time);
     printf(CYAN "%s watched the match for %d seconds and is leaving\n" NORMAL, name, spec_time);
+    add_seat(flags[ID]);
 
     return NULL;
 }
@@ -297,7 +316,7 @@ void *away_spec(void *inp)
     thread_input->patience = patience;
 
     pthread_create(&p1, NULL, awayseat_wait, (void *)(thread_input));
-    pthread_cond_wait(&seat_came[ID], &seat_mutex[ID]);//signal is sent till someone got us a seat or time expired 
+    pthread_cond_wait(&seat_came[ID], &seat_mutex[ID]); //signal is sent till someone got us a seat or time expired
 
     if (flags[ID] == 0)
     {
@@ -306,19 +325,21 @@ void *away_spec(void *inp)
     }
     else
     {
-        printf(GREEN "Person %s has got a seat in zone N\n" NORMAL, name);
+        printf(GREEN "%s has got a seat in zone N\n" NORMAL, name);
     }
 
     pthread_t p3;
-    pthread_create(&p3, NULL, sleeping_thread, NULL);
+    pthread_create(&p3, NULL, sleeping_thread, (void *)(thread_input));
 
     pthread_mutex_lock(&(((struct spectator *)inp)->spec_mutex));
     while (time_up[ID] != 1)
     {
         if (enrage <= home_team)
         {
-            printf(RED "%s is leaving due to the bad defensive performance of his team %d\n" NORMAL, name, enrage);
+            printf(RED "%s is leaving due to the bad defensive performance of his team \n" NORMAL, name);
             pthread_mutex_unlock(&(((struct spectator *)inp)->spec_mutex));
+            add_seat(flags[ID]);
+
             return NULL;
         }
         else
@@ -328,6 +349,7 @@ void *away_spec(void *inp)
     }
     printf(CYAN "%s watched the match for %d seconds and is leaving\n" NORMAL, name, spec_time);
     pthread_join(p3, NULL);
+    add_seat(flags[ID]);
 
     return NULL;
 }
