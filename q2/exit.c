@@ -32,7 +32,7 @@ void *goal_thread(void *inp)
 
     sleep(time);
     float prob_occured = rand() % 100;
-    prob_occured = prob_occured / 100;
+    prob_occured = prob_occured / 100.0;
 
     //check
     if (prob_occured <= prob)
