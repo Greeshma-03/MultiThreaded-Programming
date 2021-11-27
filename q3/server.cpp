@@ -218,7 +218,7 @@ void handle_connection(int client_socket_fd)
                 }
                 else
                 {
-                    int vals=get_value(key);
+                    int vals = get_value(key);
                     pthread_mutex_lock(&dict_mutex);
                     vec[vals].second = val;
                     pthread_mutex_unlock(&dict_mutex);
@@ -303,16 +303,19 @@ close_client_socket_ceremony:
 
 void *worker_job(void *arg)
 {
-    pthread_mutex_lock(&que_pop_mutex); 
+    pthread_mutex_lock(&que_pop_mutex);
     while (1)
-    {        
+    {
         //each thread just lock the que_mutex
         int client_socket_fd = -1;
         //get the available job from que of jobs
         if (!que.empty())
         {
+            pthread_mutex_lock(&que_push_mutex);
             client_socket_fd = que.front();
             que.pop();
+            pthread_mutex_lock(&que_push_mutex);
+
             pthread_mutex_unlock(&que_pop_mutex);
             handle_connection(client_socket_fd);
         }
