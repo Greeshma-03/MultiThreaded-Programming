@@ -314,7 +314,7 @@ void *worker_job(void *arg)
             pthread_mutex_lock(&que_push_mutex);
             client_socket_fd = que.front();
             que.pop();
-            pthread_mutex_lock(&que_push_mutex);
+            pthread_mutex_unlock(&que_push_mutex);
 
             pthread_mutex_unlock(&que_pop_mutex);
             handle_connection(client_socket_fd);
