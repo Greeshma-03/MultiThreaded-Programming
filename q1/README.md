@@ -21,8 +21,6 @@ The main entities in the simulation are:
   - Students participating in the course registration
 
 
-## Simulation of Course Allocation portal
-
 * The courses present for registration are given in the first few lines of the input and the course threads are created to simulate each of the course.
 
 * The information of students participating in the course simulation including the callibre and the preference course IDs and time he/she filled their details is provided and each corresponding student thread is executed.

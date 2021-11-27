@@ -2,16 +2,16 @@
 
 ## Overview
 
-MultiThreaded Client and Server is the simulation of a Real world scenario where multiple clients are making requests to a single server.In this program,inorder to give the impression of multiple users from different parts of the world, sending commands to the same server,each client is simulated using a thread which will try to connect with the server independent of each other.The number of client requests throughout the course of the simulation are specified at the start of input.The request is processed at the server side and the corresponding output is sent back to the client.
+MultiThreaded Client and Server is a simulation of the Real world scenario where multiple clients are making requests to a single server.In this program,inorder to give the impression of multiple users from different parts of the world, sending commands to the same server,each client is simulated using a thread which will try to connect with the server independent of each other.The number of client requests throughout the course of the simulation are specified at the start of input.The request is processed at the server side and the corresponding output is sent back to the client.
 
 
 ## Running the Program
 
 * Compile the Server code using `g++ -o server server.cpp -pthread`
 * Compile the Client code using `g++ -o client client.cpp -pthread`
-* Run the Server using command `./server`
-* Run the Client using command `./client num_workers` and give an integral input `num_workers`
-* To stop the Server press Ctrl+C.
+* Run the Server using command `./server num_workers` and give an integral input `num_workers`
+* Run the Client using command `./client` 
+* To stop the Server press Ctrl+C
 
 
 ## Working of Client Program
@@ -47,6 +47,6 @@ MultiThreaded Client and Server is the simulation of a Real world scenario where
  pthread_cond_wait(&job, &que_pop_mutex);
 ``` 
 * As the Queue pushing and poping is non-synchronous with many threads popping out and main function pushing it mutex_locks are maintained to avoid this problem.
-* A mutex named *que_push_mutex`* is maintained to ensure synchronized push of elements to the queue and access them as well and another mutex named *que_pop_mutex* is added so that no two threads can't pop out an element from the Queue simulatenously.
+* A mutex named *que_push_mutex* is maintained to ensure synchronized push of elements to the queue and access them as well and another mutex named *que_pop_mutex* is added so that no two threads can't pop out an element from the Queue simulatenously.
 * In the `handle connection()` only a single request per user is handled where the command sent through the string from client is tokenized with `tokenise()` function and each operation is one by one checked starting with insert then delete,update,concat and followed by fetch and for each of the operation along with the values provided appropriate message after processing the queries.
 * In order to synchronise the operations performed by each thread on the dictionary,a mutex named *dict_mutex* is used which locks the values of vectors while reading or modifying and unlocks after completion.
