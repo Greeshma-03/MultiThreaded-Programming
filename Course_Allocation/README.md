@@ -8,7 +8,7 @@ Course Allocation Portal is a simulation of Real World application where a stude
 ## Running the Portal
 
 * Compile the code using command `make`
-* Run the program with command `./a.out`
+* Run the program with command `./run`
 * Simulation **ends** automatically after all students exited the simulation.
 
 

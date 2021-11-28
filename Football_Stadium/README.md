@@ -9,7 +9,7 @@ The Clasico Experience is a simulation of a Real World football match at a stadi
 ## Running the Stadium
 
 * Compile the code using command `make`
-* Run the program with command `./a.out`
+* Run the program with command `./run`
 * Simulation **ends** automatically after all audience left the stadium.
 
 
